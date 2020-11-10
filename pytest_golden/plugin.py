@@ -3,6 +3,7 @@ import contextlib
 import dataclasses
 import inspect
 import logging
+import os
 import pathlib
 import warnings
 from typing import Any, Callable, Collection, Dict, List, Optional, Sequence, Type, TypeVar, Union
@@ -27,15 +28,19 @@ def pytest_addoption(parser):
 
 @pytest.fixture
 def golden(request):
+    path = None
     try:
-        args = request.param
+        path, func = request.param
     except AttributeError:
-        args = (None, request.function)
-    fixt = GoldenTestFixture(
-        *args,
-        update_goldens=request.config.getoption("--update-goldens"),
-        assertions_enabled=request.config.getini("enable_assertion_pass_hook"),
+        func = request.function
+
+    fixt = GoldenTestFixtureFactory(
+        func,
+        request.config.getoption("--update-goldens"),
+        request.config.getini("enable_assertion_pass_hook"),
     )
+    if path is not None:
+        fixt = fixt.open(path)
     yield fixt
     fixt.teardown(request.node)
 
@@ -66,14 +71,33 @@ class GoldenTestUsageWarning(Warning):
 
 
 @dataclasses.dataclass
-class GoldenTestFixture:
-    path: Optional[pathlib.Path]
+class GoldenTestFixtureFactory:
+    name = FIXTURE_NAME
+
     func: Callable
     update_goldens: bool
     assertions_enabled: bool
-    name = FIXTURE_NAME
 
     def __post_init__(self):
+        self._fixtures: List["GoldenTestFixture"] = []
+
+    def open(self, path: os.PathLike) -> "GoldenTestFixture":
+        fixt = GoldenTestFixture(path=path, **dataclasses.asdict(self))
+        self._fixtures.append(fixt)
+        return fixt
+
+    def teardown(self, item):
+        for f in self._fixtures:
+            f.teardown(item)
+
+
+@dataclasses.dataclass
+class GoldenTestFixture(GoldenTestFixtureFactory):
+    path: Optional[pathlib.Path]
+
+    def __post_init__(self):
+        self._used_fields = set()
+
         if self.path is None:
             return
 
@@ -92,9 +116,11 @@ class GoldenTestFixture:
             self.out = self.inputs
 
     def __getitem__(self, key: str) -> Any:
+        self._used_fields.add(key)
         return self.inputs[key]
 
     def get(self, key: str) -> Optional[Any]:
+        self._used_fields.add(key)
         return self.inputs.get(key)
 
     def teardown(self, item):
@@ -143,6 +169,15 @@ class GoldenTestFixture:
             for k, v in outputs.items()
             if not isinstance(v, _AbsentValue)
         }
+        unused_fields = outputs.keys() - self._used_fields
+        if unused_fields:
+            f_code = self.func.__code__
+            warnings.warn_explicit(
+                f"Unused field(s) {', '.join(map(repr, sorted(unused_fields)))} in {item.name}",
+                GoldenTestUsageWarning,
+                f_code.co_filename,
+                f_code.co_firstlineno,
+            )
         with atomicwrites.atomic_write(self.path, mode="w", encoding="utf-8", overwrite=True) as f:
             yaml.dump(outputs, f, sort_keys=False, width=1 << 32)
 
@@ -177,9 +212,11 @@ class GoldenOutputProxy:
     fixt: GoldenTestFixture
 
     def __getitem__(self, key: str) -> "GoldenOutput":
+        self.fixt._used_fields.add(key)
         return GoldenOutput(self.fixt, key)
 
     def get(self, key: str) -> "GoldenOutput":
+        self.fixt._used_fields.add(key)
         return GoldenOutput(self.fixt, key, optional=True)
 
 
@@ -275,6 +312,8 @@ def pytest_generate_tests(metafunc):
         return
     patterns = _golden_test_marker(*marker.args, **marker.kwargs)
 
+    f_code = metafunc.function.__code__
+
     def warn(msg):
         warnings.warn_explicit(
             f"{msg}: {metafunc.function}",
@@ -284,7 +323,6 @@ def pytest_generate_tests(metafunc):
         )
 
     if FIXTURE_NAME not in metafunc.fixturenames:
-        f_code = metafunc.function.__code__
         warn(f"Useless '{MARKER_NAME}' marker on a test without a '{FIXTURE_NAME}' fixture")
         return
 
@@ -299,7 +337,6 @@ def pytest_generate_tests(metafunc):
     # `::test_foo[foo/*.yaml]` -> `::test_foo[*.yaml]`
     rel_paths = [path.relative_to(directory) for path in paths]
     skip_parts = None
-    item.originalname
     if all("test_" + path.parts[0] == item.originalname for path in rel_paths):
         skip_parts = 1
     ids = ("/".join(path.parts[skip_parts:]) for path in rel_paths)
