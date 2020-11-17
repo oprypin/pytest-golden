@@ -35,6 +35,7 @@ def golden(request):
         func = request.function
 
     fixt = GoldenTestFixtureFactory(
+        pathlib.Path(request.module.__file__),
         func,
         request.config.getoption("--update-goldens"),
         request.config.getini("enable_assertion_pass_hook"),
@@ -74,6 +75,7 @@ class GoldenTestUsageWarning(Warning):
 class GoldenTestFixtureFactory:
     name = FIXTURE_NAME
 
+    path: pathlib.Path
     func: Callable
     update_goldens: bool
     assertions_enabled: bool
@@ -82,9 +84,15 @@ class GoldenTestFixtureFactory:
         self._fixtures: List["GoldenTestFixture"] = []
 
     def open(self, path: os.PathLike) -> "GoldenTestFixture":
-        fixt = GoldenTestFixture(path=path, **dataclasses.asdict(self))
+        kwargs = dataclasses.asdict(self)
+        kwargs["path"] = kwargs["path"].parent / path
+        fixt = GoldenTestFixture(**kwargs)
         self._fixtures.append(fixt)
         return fixt
+
+    def _add_record(self, r):
+        for f in self._fixtures:
+            f._add_record(r)
 
     def teardown(self, item):
         for f in self._fixtures:
@@ -93,15 +101,10 @@ class GoldenTestFixtureFactory:
 
 @dataclasses.dataclass
 class GoldenTestFixture(GoldenTestFixtureFactory):
-    path: Optional[pathlib.Path]
-
     def __post_init__(self):
         self._used_fields = set()
 
-        if self.path is None:
-            return
-
-        with self.path.open(encoding="utf-8") as f:
+        with open(self.path, encoding="utf-8") as f:
             inputs = yaml.safe_load(f)
         if inputs is None:
             inputs = {}
@@ -122,6 +125,9 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
     def get(self, key: str) -> Optional[Any]:
         self._used_fields.add(key)
         return self.inputs.get(key)
+
+    def _add_record(self, r):
+        self._records.append(r)
 
     def teardown(self, item):
         if not self.update_goldens:
@@ -266,7 +272,7 @@ class GoldenComparison:
         ]
         for info in stack:
             if info.frame.f_code in approved:
-                self.fixt._records.append(_ComparisonRecord(self, inspect.getframeinfo(info.frame)))
+                self.fixt._add_record(_ComparisonRecord(self, inspect.getframeinfo(info.frame)))
                 break
         return self.eq
 
@@ -337,7 +343,10 @@ def pytest_generate_tests(metafunc):
     # `::test_foo[foo/*.yaml]` -> `::test_foo[*.yaml]`
     rel_paths = [path.relative_to(directory) for path in paths]
     skip_parts = None
-    if all("test_" + path.parts[0] == item.originalname for path in rel_paths):
+    if all(
+        _removeprefix("test_", path.parts[0]) == _removeprefix("test_", item.originalname)
+        for path in rel_paths
+    ):
         skip_parts = 1
     ids = ("/".join(path.parts[skip_parts:]) for path in rel_paths)
 
@@ -349,7 +358,13 @@ def pytest_generate_tests(metafunc):
     )
 
 
+def _removeprefix(prefix: str, s: str):
+    if s.startswith(prefix):
+        s = s[len(prefix) :]
+    return s
+
+
 def pytest_assertion_pass(item, lineno, orig, expl):
     fixt = item.funcargs.get(FIXTURE_NAME)
-    if isinstance(fixt, GoldenTestFixture) and fixt.update_goldens:
-        fixt._records.append(_AssertionRecord(lineno))
+    if isinstance(fixt, GoldenTestFixtureFactory) and fixt.update_goldens:
+        fixt._add_record(_AssertionRecord(lineno))
