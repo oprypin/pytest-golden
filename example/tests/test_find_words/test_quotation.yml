@@ -1,0 +1,10 @@
+input: |-
+  Dr. King said, "I have a dream."
+output:
+- Dr
+- King
+- said
+- I
+- have
+- a
+- dream

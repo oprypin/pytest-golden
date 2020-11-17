@@ -1,2 +1,4 @@
+import re
+
 def find_words(text: str) -> list:
-    return text.split()
+    return re.findall(r"\w+", text)
