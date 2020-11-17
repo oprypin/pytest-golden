@@ -6,7 +6,20 @@ import logging
 import os
 import pathlib
 import warnings
-from typing import Any, Callable, Collection, Dict, List, Optional, Sequence, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Collection,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import atomicwrites
 import pytest
@@ -80,8 +93,10 @@ class GoldenTestFixtureFactory:
     update_goldens: bool
     assertions_enabled: bool
 
+    _fixtures = ...  # type: List["GoldenTestFixture"]
+
     def __post_init__(self):
-        self._fixtures: List["GoldenTestFixture"] = []
+        self._fixtures = []
 
     def open(self, path: os.PathLike) -> "GoldenTestFixture":
         kwargs = dataclasses.asdict(self)
@@ -101,6 +116,10 @@ class GoldenTestFixtureFactory:
 
 @dataclasses.dataclass
 class GoldenTestFixture(GoldenTestFixtureFactory):
+    _used_fields = ...  # type: Set[str]
+    _records = ...  # type: List[Union["_ComparisonRecord", "_AssertionRecord"]]
+    _inputs = ...  # type: Dict[str, Any]
+
     def __post_init__(self):
         self._used_fields = set()
 
@@ -109,22 +128,22 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         if inputs is None:
             inputs = {}
         elif not isinstance(inputs, dict):
-            raise UsageError(f"The YAML file '{path}' must contain a dict at the top level.")
+            raise UsageError(f"The YAML file '{self.path}' must contain a dict at the top level.")
 
-        self.inputs: Dict[str, Any] = inputs
+        self._inputs = inputs
         if self.update_goldens:
             self.out = GoldenOutputProxy(self)
-            self._records: List[Union["_ComparisonRecord", "_AssertionRecord"]] = []
+            self._records = []
         else:
-            self.out = self.inputs
+            self.out = inputs
 
     def __getitem__(self, key: str) -> Any:
         self._used_fields.add(key)
-        return self.inputs[key]
+        return self._inputs[key]
 
     def get(self, key: str) -> Optional[Any]:
         self._used_fields.add(key)
-        return self.inputs.get(key)
+        return self._inputs.get(key)
 
     def _add_record(self, r):
         self._records.append(r)
@@ -169,7 +188,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 msg, GoldenTestUsageWarning, record.location.filename, record.location.lineno
             )
 
-        outputs = collections.ChainMap(actual, self.inputs)
+        outputs = collections.ChainMap(actual, self._inputs)
         outputs = {
             k: MultilineString(v) if isinstance(v, str) else v
             for k, v in outputs.items()
@@ -289,7 +308,7 @@ class GoldenComparison:
 @dataclasses.dataclass
 class _ComparisonRecord:
     comparison: "GoldenComparison"
-    location: inspect.FrameInfo
+    location: inspect.Traceback
 
     @property
     def key(self) -> str:
