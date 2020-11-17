@@ -1,0 +1,12 @@
+input: |-
+  If at first you don't succeed, try, try again.
+output:
+- If
+- at
+- first
+- you
+- don't
+- succeed,
+- try,
+- try
+- again.

@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "foo"
+version = "0.1.0"
+description = "example"
+authors = ["Oleh Prypin <oleh@pryp.in>"]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.1.2"
+pytest-golden = {path = ".."}  # Don't specify `path` in a real project!
+
+[tool.pytest.ini_options]
+enable_assertion_pass_hook = true
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
