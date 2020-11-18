@@ -9,7 +9,7 @@ python = "^3.6"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"
-pytest-golden = {path = ".."}  # Don't specify `path` in a real project!
+pytest-golden = "*"
 
 [tool.pytest.ini_options]
 enable_assertion_pass_hook = true
