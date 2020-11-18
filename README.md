@@ -221,3 +221,43 @@ Ditto, but returns `None` if the key is missing.
 #### `golden.out.get(output_key: str) -> Optional[Any]`
 
 Ditto, but when compared to `None`, marks the key as deleted from the file, rather than just having the value `None`.
+
+## How to...
+
+### Make a custom type representable in YAML
+
+You can access `golden.yaml` inside each individual test function, or you can apply this globally, in *conftest.py*:
+
+```python
+@pytest.fixture
+def golden(golden):
+    golden.yaml.register_class(MyClass)
+    return golden
+```
+
+(and see [details for `ruamel.yaml`](https://yaml.readthedocs.io/en/latest/dumpcls.html))
+
+Alternate example if your class is equivalnt to a single value:
+
+```python
+class MyClass(str):
+    pass
+
+@pytest.fixture
+def golden(golden):
+    golden.yaml.representer.add_representer(MyClass, lambda dumper, data: dumper.represent_scalar("!MyClass", data))
+    golden.yaml.constructor.add_constructor('!MyClass', lambda loader, node: parser.MyClass(node.value))
+    return golden
+```
+
+Or in the particular case of subclassing a standard type, you could just drop the tag altogether and rely on equality to the base type.
+
+```python
+class MyClass(str):
+    pass
+
+@pytest.fixture
+def golden(golden):
+    golden.yaml.representer.add_representer(MyClass, lambda dumper, data: dumper.represent_str(data))
+    return golden
+```

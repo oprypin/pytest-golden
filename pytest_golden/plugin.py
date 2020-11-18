@@ -23,9 +23,7 @@ from typing import (
 
 import atomicwrites
 import pytest
-import yaml
-
-from . import MultilineString
+import ruamel.yaml
 
 T = TypeVar("T")
 
@@ -92,6 +90,7 @@ class GoldenTestFixtureFactory:
     func: Callable
     update_goldens: bool
     assertions_enabled: bool
+    yaml: ruamel.yaml.YAML = dataclasses.field(default_factory=ruamel.yaml.YAML)
 
     _fixtures = ...  # type: List["GoldenTestFixture"]
 
@@ -119,23 +118,22 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
     _used_fields = ...  # type: Set[str]
     _records = ...  # type: List[Union["_ComparisonRecord", "_AssertionRecord"]]
     _inputs = ...  # type: Dict[str, Any]
+    _outputs = ...  # type: Dict[str, Any]
 
     def __post_init__(self):
         self._used_fields = set()
 
-        with open(self.path, encoding="utf-8") as f:
-            inputs = yaml.safe_load(f)
-        if inputs is None:
-            inputs = {}
-        elif not isinstance(inputs, dict):
+        # Get two copies of the data structure, so if an input gets mutated, it isn't written back.
+        self._inputs = self.yaml.load(self.path) or {}
+        self._outputs = self.yaml.load(self.path) or {}
+        if not isinstance(self._inputs, dict):
             raise UsageError(f"The YAML file '{self.path}' must contain a dict at the top level.")
 
-        self._inputs = inputs
         if self.update_goldens:
             self.out = GoldenOutputProxy(self)
             self._records = []
         else:
-            self.out = inputs
+            self.out = self._outputs
 
     def __getitem__(self, key: str) -> Any:
         self._used_fields.add(key)
@@ -152,14 +150,14 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         if not self.update_goldens:
             return
 
-        actual: Dict[str, Union[_AbsentValue, Any]] = {}
-        approved_lines: List[int] = []
+        actual = collections.ChainMap(self._outputs).new_child()
+        approved_lines: Set[int] = set()
         to_warn: List[Tuple[str, _ComparisonRecord]] = []
         warn = lambda *args: to_warn.append(args)
 
         for record in reversed(self._records):
             if isinstance(record, _AssertionRecord):
-                approved_lines.append(record.lineno)
+                approved_lines.add(record.lineno)
             elif isinstance(record, _ComparisonRecord):
                 comparison = record.comparison
                 if record.location.lineno in approved_lines:
@@ -174,13 +172,14 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 value = record.other
                 if comparison.optional and value is None:
                     value = _AbsentValue()
-                if comparison.key in actual and actual[comparison.key] != value:
+                if comparison.key in actual.maps[0] and actual[comparison.key] != value:
                     warn(
                         f"Comparison to golden output {comparison.key!r} has gotten conflicting values: "
                         f"{record.other!r} vs {actual[comparison.key]!r}",
                         record,
                     )
                     continue
+                ruamel.yaml.scalarstring.walk_tree(value)
                 actual[record.key] = value
 
         for msg, record in reversed(to_warn):
@@ -188,12 +187,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 msg, GoldenTestUsageWarning, record.location.filename, record.location.lineno
             )
 
-        outputs = collections.ChainMap(actual, self._inputs)
-        outputs = {
-            k: MultilineString(v) if isinstance(v, str) else v
-            for k, v in outputs.items()
-            if not isinstance(v, _AbsentValue)
-        }
+        outputs = {k: v for k, v in actual.items() if not isinstance(v, _AbsentValue)}
         unused_fields = outputs.keys() - self._used_fields
         if unused_fields:
             f_code = self.func.__code__
@@ -204,14 +198,14 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 f_code.co_firstlineno,
             )
         with atomicwrites.atomic_write(self.path, mode="w", encoding="utf-8", overwrite=True) as f:
-            yaml.dump(outputs, f, sort_keys=False, width=1 << 32)
+            self.yaml.dump(outputs, f)
 
     @contextlib.contextmanager
     def may_raise(self, cls: Type[Exception], *, key: str = "exception"):
         try:
             yield
         except cls as e:
-            assert self.out.get(key) == {type(e).__name__: MultilineString(e)}
+            assert self.out.get(key) == {type(e).__name__: str(e)}
         else:
             assert self.out.get(key) == None
 
