@@ -150,7 +150,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         if not self.update_goldens:
             return
 
-        actual = collections.ChainMap(self._outputs).new_child()
+        actual: Dict[str, Union[_AbsentValue, Any]] = {}
         approved_lines: Set[int] = set()
         to_warn: List[Tuple[str, _ComparisonRecord]] = []
         warn = lambda *args: to_warn.append(args)
@@ -172,14 +172,13 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 value = record.other
                 if comparison.optional and value is None:
                     value = _AbsentValue()
-                if comparison.key in actual.maps[0] and actual[comparison.key] != value:
+                if comparison.key in actual and actual[comparison.key] != value:
                     warn(
                         f"Comparison to golden output {comparison.key!r} has gotten conflicting values: "
                         f"{record.other!r} vs {actual[comparison.key]!r}",
                         record,
                     )
                     continue
-                ruamel.yaml.scalarstring.walk_tree(value)
                 actual[record.key] = value
 
         for msg, record in reversed(to_warn):
@@ -187,7 +186,10 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 msg, GoldenTestUsageWarning, record.location.filename, record.location.lineno
             )
 
-        outputs = {k: v for k, v in actual.items() if not isinstance(v, _AbsentValue)}
+        ruamel.yaml.scalarstring.walk_tree(actual)
+        outputs = collections.ChainMap(actual, self._inputs)
+        outputs = {k: v for k, v in outputs.items() if not isinstance(v, _AbsentValue)}
+
         unused_fields = outputs.keys() - self._used_fields
         if unused_fields:
             f_code = self.func.__code__

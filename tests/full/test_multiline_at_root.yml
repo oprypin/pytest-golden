@@ -1,0 +1,24 @@
+test: |
+  def test_multiline_at_root(golden):
+    golden = golden.open("gold.yml")
+    assert golden["input"] == golden.out["output"]
+files:
+  gold.yml: |
+    input: |
+      a
+      b
+      c
+outcomes:
+  failed: 1
+outcomes_update:
+  passed: 1
+updated_files:
+  gold.yml: |
+    input: |
+      a
+      b
+      c
+    output: |
+      a
+      b
+      c
