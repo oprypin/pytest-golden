@@ -22,7 +22,8 @@ from typing import (
 
 import atomicwrites
 import pytest
-import ruamel.yaml
+
+from . import yaml
 
 T = TypeVar("T")
 
@@ -89,7 +90,6 @@ class GoldenTestFixtureFactory:
     func: Callable
     update_goldens: bool
     assertions_enabled: bool
-    yaml: ruamel.yaml.YAML = dataclasses.field(default_factory=ruamel.yaml.YAML)
 
     _fixtures = ...  # type: List["GoldenTestFixture"]
 
@@ -117,14 +117,12 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
     _used_fields = ...  # type: Set[str]
     _records = ...  # type: List[Union["_ComparisonRecord", "_AssertionRecord"]]
     _inputs = ...  # type: Dict[str, Any]
-    _outputs = ...  # type: Dict[str, Any]
 
     def __post_init__(self):
         self._used_fields = set()
 
-        # Get two copies of the data structure, so if an input gets mutated, it isn't written back.
-        self._inputs = self.yaml.load(self.path) or {}
-        self._outputs = self.yaml.load(self.path) or {}
+        # Keep inputs as a separate copy, so if an input gets mutated, it isn't written back.
+        self._inputs = yaml._safe.load(self.path) or {}
         if not isinstance(self._inputs, dict):
             raise UsageError(f"The YAML file '{self.path}' must contain a dict at the top level.")
 
@@ -132,7 +130,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
             self.out = GoldenOutputProxy(self)
             self._records = []
         else:
-            self.out = self._outputs
+            self.out = yaml._safe.load(self.path) or {}
 
     def __getitem__(self, key: str) -> Any:
         self._used_fields.add(key)
@@ -185,14 +183,15 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 msg, GoldenTestUsageWarning, record.location.filename, record.location.lineno
             )
 
-        ruamel.yaml.scalarstring.walk_tree(actual)
+        yaml._prepare_for_output(actual)
+        outputs = yaml._rt.load(self.path) or {}
         for k, v in actual.items():
             if isinstance(v, _AbsentValue):
-                self._outputs.pop(k, None)
+                outputs.pop(k, None)
             else:
-                self._outputs[k] = v
+                outputs[k] = v
 
-        unused_fields = self._outputs.keys() - self._used_fields
+        unused_fields = outputs.keys() - self._used_fields
         if unused_fields:
             f_code = self.func.__code__
             warnings.warn_explicit(
@@ -202,7 +201,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 f_code.co_firstlineno,
             )
         with atomicwrites.atomic_write(self.path, mode="w", encoding="utf-8", overwrite=True) as f:
-            self.yaml.dump(self._outputs, f)
+            yaml._rt.dump(outputs, f)
 
     @contextlib.contextmanager
     def may_raise(self, cls: Type[Exception], *, key: str = "exception"):

@@ -226,28 +226,25 @@ Ditto, but when compared to `None`, marks the key as deleted from the file, rath
 
 ### Make a custom type representable in YAML
 
-You can access `golden.yaml` inside each individual test function, or you can apply this globally, in *conftest.py*:
+We will make these types known to the underlying implementation -- [ruamel.yaml](https://yaml.readthedocs.io/), but let's use only the passthrough functions provided by the module `pytest_golden.yaml`. It is best to apply this globally, in *conftest.py*.
 
 ```python
-@pytest.fixture
-def golden(golden):
-    golden.yaml.register_class(MyClass)
-    return golden
+import pytest_golden.yaml
+
+pytest_golden.yaml.register_class(MyClass)
 ```
 
 (and see [details for `ruamel.yaml`](https://yaml.readthedocs.io/en/latest/dumpcls.html))
 
-Alternate example if your class is equivalnt to a single value:
+Alternate example if your class is equivalent to a single value:
 
 ```python
-class MyClass(str):
-    pass
+class MyClass:
+    def __init__(self, value: str):
+        self.value = value
 
-@pytest.fixture
-def golden(golden):
-    golden.yaml.representer.add_representer(MyClass, lambda dumper, data: dumper.represent_scalar("!MyClass", data))
-    golden.yaml.constructor.add_constructor('!MyClass', lambda loader, node: parser.MyClass(node.value))
-    return golden
+pytest_golden.yaml.add_representer(MyClass, lambda dumper, data: dumper.represent_scalar("!MyClass", data.value))
+pytest_golden.yaml.add_constructor('!MyClass', lambda loader, node: MyClass(node.value))
 ```
 
 Or in the particular case of subclassing a standard type, you could just drop the tag altogether and rely on equality to the base type.
@@ -256,8 +253,5 @@ Or in the particular case of subclassing a standard type, you could just drop th
 class MyClass(str):
     pass
 
-@pytest.fixture
-def golden(golden):
-    golden.yaml.representer.add_representer(MyClass, lambda dumper, data: dumper.represent_str(data))
-    return golden
+pytest_golden.yaml.add_representer(MyClass, lambda dumper, data: dumper.represent_str(data))
 ```
