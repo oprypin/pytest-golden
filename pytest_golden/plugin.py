@@ -1,4 +1,3 @@
-import collections
 import contextlib
 import dataclasses
 import inspect
@@ -187,10 +186,13 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
             )
 
         ruamel.yaml.scalarstring.walk_tree(actual)
-        outputs = collections.ChainMap(actual, self._inputs)
-        outputs = {k: v for k, v in outputs.items() if not isinstance(v, _AbsentValue)}
+        for k, v in actual.items():
+            if isinstance(v, _AbsentValue):
+                self._outputs.pop(k, None)
+            else:
+                self._outputs[k] = v
 
-        unused_fields = outputs.keys() - self._used_fields
+        unused_fields = self._outputs.keys() - self._used_fields
         if unused_fields:
             f_code = self.func.__code__
             warnings.warn_explicit(
@@ -200,7 +202,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 f_code.co_firstlineno,
             )
         with atomicwrites.atomic_write(self.path, mode="w", encoding="utf-8", overwrite=True) as f:
-            self.yaml.dump(outputs, f)
+            self.yaml.dump(self._outputs, f)
 
     @contextlib.contextmanager
     def may_raise(self, cls: Type[Exception], *, key: str = "exception"):
