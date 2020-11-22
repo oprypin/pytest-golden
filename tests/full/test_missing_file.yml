@@ -1,0 +1,9 @@
+test: |
+  def test_missing_file(golden):
+    golden.open("missing.yml")
+match_output:
+- FileNotFoundError
+outcomes:
+  failed: 1
+outcomes_update:
+  failed: 1

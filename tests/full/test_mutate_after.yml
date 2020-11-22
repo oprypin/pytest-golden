@@ -1,0 +1,19 @@
+test: |
+  def test_mutate_after(golden):
+    golden = golden.open("gold.yml")
+    x = ["good"]
+    assert x == golden.out["output"]
+    x.append("bad")
+files:
+  gold.yml: |
+    output:
+    - good
+outcomes:
+  passed: 1
+outcomes_update:
+  passed: 1
+updated_files:
+  gold.yml: |
+    output:
+    - good
+    - bad

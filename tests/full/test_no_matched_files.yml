@@ -1,0 +1,16 @@
+test: |
+  import pytest
+
+  @pytest.mark.golden_test("missing.yml")
+  def test_no_matched_files(golden):
+    golden.get("foo")
+files:
+  notmissing.yml: ''
+match_output:
+- "The patterns ('missing.yml',) didn't match anything: *test_no_matched_files"
+outcomes:
+  failed: 1
+  warnings: 1
+outcomes_update:
+  failed: 1
+  warnings: 1

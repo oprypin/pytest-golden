@@ -1,0 +1,14 @@
+test: |
+  def test_missing_key(golden):
+    golden = golden.open("gold.yml")
+    golden["not_missing"]
+    golden["missing"]
+files:
+  gold.yml: |
+    not_missing: zzz
+match_output:
+- KeyError
+outcomes:
+  failed: 1
+outcomes_update:
+  failed: 1

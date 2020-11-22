@@ -1,0 +1,13 @@
+test: |
+  def test_unused_field(golden):
+    golden = golden.open("gold.yml")
+    assert 5 == golden.out["used"]
+files:
+  gold.yml: |
+    used: 5
+    unused: 7
+outcomes:
+  passed: 1
+outcomes_update:
+  passed: 1
+  warnings: 1

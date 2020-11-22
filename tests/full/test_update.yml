@@ -1,0 +1,14 @@
+test: |
+  def test_update(golden):
+    golden = golden.open("gold.yml")
+    assert 5 == golden.out["output"]
+files:
+  gold.yml: |
+    output: 7
+outcomes:
+  failed: 1
+outcomes_update:
+  passed: 1
+updated_files:
+  gold.yml: |
+    output: 5

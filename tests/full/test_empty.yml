@@ -1,0 +1,7 @@
+test: |
+  def test_empty(golden):
+    pass
+outcomes:
+  passed: 1
+outcomes_update:
+  passed: 1

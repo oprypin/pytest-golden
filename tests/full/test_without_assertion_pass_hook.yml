@@ -1,0 +1,14 @@
+test: |
+  def test_without_assertion_pass_hook(golden):
+    golden = golden.open("gold.yml")
+    5 == golden.out["output"]
+files:
+  pytest.ini: ''
+  gold.yml: |
+    output: 7
+outcomes:
+  passed: 1
+outcomes_update:
+  passed: 1
+warnings:
+- Add 'enable_assertion_pass_hook=true' to pytest.ini for safer usage of pytest-golden.

@@ -1,0 +1,19 @@
+test: |
+  def test_mutate(golden):
+    golden = golden.open("gold.yml")
+    inp = golden["input"]
+    inp["x"] = 5
+    assert inp == golden.out["output"]
+files:
+  gold.yml: |
+    input: {input: a}
+outcomes:
+  failed: 1
+outcomes_update:
+  passed: 1
+updated_files:
+  gold.yml: |
+    input: {input: a}
+    output:
+      input: a
+      x: 5
