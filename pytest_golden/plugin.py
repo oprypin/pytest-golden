@@ -122,7 +122,8 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         self._used_fields = set()
 
         # Keep inputs as a separate copy, so if an input gets mutated, it isn't written back.
-        self._inputs = yaml._safe.load(self.path) or {}
+        with open(self.path, encoding="utf-8") as f:
+            self._inputs = yaml._safe.load(f) or {}
         if not isinstance(self._inputs, dict):
             raise UsageError(f"The YAML file '{self.path}' must contain a dict at the top level.")
 
@@ -130,7 +131,8 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
             self.out = GoldenOutputProxy(self)
             self._records = []
         else:
-            self.out = yaml._safe.load(self.path) or {}
+            with open(self.path, encoding="utf-8") as f:
+                self.out = yaml._safe.load(f) or {}
 
     def __getitem__(self, key: str) -> Any:
         self._used_fields.add(key)
@@ -184,7 +186,8 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
             )
 
         yaml._prepare_for_output(actual)
-        outputs = yaml._rt.load(self.path) or {}
+        with open(self.path, encoding="utf-8") as f:
+            outputs = yaml._rt.load(f) or {}
         for k, v in actual.items():
             if isinstance(v, _AbsentValue):
                 outputs.pop(k, None)
