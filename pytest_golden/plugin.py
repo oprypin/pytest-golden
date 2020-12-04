@@ -5,20 +5,7 @@ import logging
 import os
 import pathlib
 import warnings
-from typing import (
-    Any,
-    Callable,
-    Collection,
-    Dict,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Collection, Dict, List, Sequence, Set, Tuple, Type, TypeVar, Union
 
 import atomicwrites
 import pytest
@@ -138,9 +125,9 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         self._used_fields.add(key)
         return self._inputs[key]
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str, default: T = None) -> Union[Any, T]:
         self._used_fields.add(key)
-        return self._inputs.get(key)
+        return self._inputs.get(key, default)
 
     def _add_record(self, r):
         self._records.append(r)
