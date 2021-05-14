@@ -12,6 +12,7 @@ with_groups() {
 "$@" isort -q pytest_golden tests
 "$@" black -q pytest_golden tests
 "$@" pytest -q
-python -c 'import sys, os; sys.exit((3,8) <= sys.version_info < (3,9) and os.name == "posix")' ||
+python -c 'import sys, os; sys.exit((3,8) <= sys.version_info < (3,10) and os.name == "posix")' ||
 "$@" pytype pytest_golden
+
 PYTHONPATH=$(pwd)/example "$@" pytest -q example
