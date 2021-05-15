@@ -259,3 +259,41 @@ class MyClass(str):
 
 pytest_golden.yaml.add_representer(MyClass, lambda dumper, data: dumper.represent_str(data))
 ```
+
+### Apply a default golden file for all tests in a module
+
+Consider this test where we use `pytest_golden` only for storing the outputs:
+
+NOTE: These `*.yml` files need to be manually created first, even if empty.
+
+```python
+def test_foo(golden):
+    golden = golden.open("stuff/test_foo.yml")
+    assert foo() == golden.out["output"]
+
+def test_bar(golden):
+    golden = golden.open("stuff/test_bar.yml")
+    assert bar("a", "b") == golden.out["output"]
+```
+
+The test bodies are different (so applying a pattern via a `mark` is not applicable), but we still want to automatically assign the golden files without repeating ourselves.
+
+To do that, we can augment the `golden` fixture like this:
+
+```python
+@pytest.fixture
+def my_golden(request, golden):
+    return golden.open(f"stuff/{request.node.name}.yml")
+
+def test_foo(my_golden):
+    assert foo() == my_golden.out["output"]
+
+def test_bar(my_golden):
+    assert bar("a", "b") == my_golden.out["output"]
+```
+
+Here the name of the YAML files is based on the test name. Previously the file names were manually ensured to match. So these two snippets are fully equivalent.
+
+Note that you don't even need to come up with a separate name like `my_golden` and just overwrite the original `golden` fixture for the whole module.
+
+See [a real example of this](https://github.com/oprypin/mkdocs-gen-files/tree/233486840c8f8e5d3e86c1c0bf9032d758818406/tests).
