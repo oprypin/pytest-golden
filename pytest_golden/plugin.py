@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import dataclasses
 import inspect
@@ -5,7 +7,20 @@ import logging
 import os
 import pathlib
 import warnings
-from typing import Any, Callable, Collection, Dict, List, Sequence, Set, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Collection,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import atomicwrites
 import pytest
@@ -78,15 +93,18 @@ class GoldenTestFixtureFactory:
     update_goldens: bool
     assertions_enabled: bool
 
-    _fixtures = ...  # type: List["GoldenTestFixture"]
+    _fixtures: List[GoldenTestFixture] = dataclasses.field(init=False)
 
     def __post_init__(self):
         self._fixtures = []
 
-    def open(self, path: os.PathLike) -> "GoldenTestFixture":
-        kwargs = dataclasses.asdict(self)
-        kwargs["path"] = kwargs["path"].parent / path
-        fixt = GoldenTestFixture(**kwargs)
+    def open(self, path: os.PathLike) -> GoldenTestFixture:
+        fixt = GoldenTestFixture(
+            path=self.path.parent / path,
+            func=self.func,
+            update_goldens=self.update_goldens,
+            assertions_enabled=self.assertions_enabled,
+        )
         self._fixtures.append(fixt)
         return fixt
 
@@ -101,9 +119,9 @@ class GoldenTestFixtureFactory:
 
 @dataclasses.dataclass
 class GoldenTestFixture(GoldenTestFixtureFactory):
-    _used_fields = ...  # type: Set[str]
-    _records = ...  # type: List[Union["_ComparisonRecord", "_AssertionRecord"]]
-    _inputs = ...  # type: Dict[str, Any]
+    _used_fields: Set[str] = dataclasses.field(init=False)
+    _records: List[Union[_ComparisonRecord, _AssertionRecord]] = dataclasses.field(init=False)
+    _inputs: Dict[str, Any] = dataclasses.field(init=False)
 
     def __post_init__(self):
         self._used_fields = set()
@@ -125,7 +143,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         self._used_fields.add(key)
         return self._inputs[key]
 
-    def get(self, key: str, default: T = None) -> Union[Any, T]:
+    def get(self, key: str, default: Optional[T] = None) -> Union[Any, T]:
         self._used_fields.add(key)
         return self._inputs.get(key, default)
 
@@ -205,7 +223,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
     @contextlib.contextmanager
     def capture_logs(
         self,
-        loggers: Union[str, Sequence[str]],
+        loggers: Union[str, Tuple[str]],
         level: int = logging.INFO,
         attributes: Sequence[str] = ("levelname", "getMessage"),
         *,
@@ -223,11 +241,11 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
 class GoldenOutputProxy:
     fixt: GoldenTestFixture
 
-    def __getitem__(self, key: str) -> "GoldenOutput":
+    def __getitem__(self, key: str) -> GoldenOutput:
         self.fixt._used_fields.add(key)
         return GoldenOutput(self.fixt, key)
 
-    def get(self, key: str) -> "GoldenOutput":
+    def get(self, key: str) -> GoldenOutput:
         self.fixt._used_fields.add(key)
         return GoldenOutput(self.fixt, key, optional=True)
 
@@ -242,12 +260,12 @@ class GoldenOutput:
     def value(self):
         return self.fixt[self.key]
 
-    def __eq__(self, other) -> "GoldenComparison":
+    def __eq__(self, other) -> GoldenComparison:  # type: ignore[override]
         if isinstance(other, GoldenOutput):
             raise TypeError("Can't compare two golden output placeholders")
         return GoldenComparison(self.fixt, self.key, other, self.optional)
 
-    def __ne__(self, other) -> "GoldenComparison":
+    def __ne__(self, other) -> GoldenComparison:  # type: ignore[override]
         if isinstance(other, GoldenOutput):
             raise TypeError("Can't compare two golden output placeholders")
         warnings.warn(
@@ -273,8 +291,9 @@ class GoldenComparison:
     def __bool__(self) -> bool:
         stack = inspect.stack()
         approved = [
-            inspect.unwrap(f).__code__
-            for f in (self.fixt.func, GoldenTestFixture.may_raise, GoldenTestFixture.capture_logs)
+            inspect.unwrap(self.fixt.func).__code__,
+            inspect.unwrap(GoldenTestFixture.may_raise).__code__,
+            inspect.unwrap(GoldenTestFixture.capture_logs).__code__,
         ]
         for info in stack:
             if info.frame.f_code in approved:
@@ -294,7 +313,7 @@ class GoldenComparison:
 
 @dataclasses.dataclass
 class _ComparisonRecord:
-    comparison: "GoldenComparison"
+    comparison: GoldenComparison
     location: inspect.Traceback
 
     @property
