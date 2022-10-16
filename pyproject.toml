@@ -86,7 +86,7 @@ dependencies = [
 ]
 [tool.hatch.envs.style.scripts]
 format = [
-    "autoflake -i -r --remove-all-unused-imports --remove-unused-variables pytest_golden tests",
+    "autoflake -r pytest_golden tests",
     "isort -q pytest_golden tests",
     "black -q pytest_golden tests",
 ]
@@ -106,6 +106,12 @@ line-length = 100
 [tool.isort]
 profile = "black"
 line_length = 100
+
+[tool.autoflake]
+in-place = true
+remove-all-unused-imports = true
+remove-unused-variables = true
+expand-star-imports = true
 
 [tool.mypy]
 ignore_missing_imports = true
