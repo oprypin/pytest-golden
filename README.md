@@ -4,7 +4,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/pytest-golden)](https://pypi.org/project/pytest-golden/)
 [![GitHub](https://img.shields.io/github/license/oprypin/pytest-golden)](https://github.com/oprypin/pytest-golden/blob/master/LICENSE.md)
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/oprypin/pytest-golden/CI)](https://github.com/oprypin/pytest-golden/actions?query=event%3Apush+branch%3Amaster)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/oprypin/pytest-golden/ci.yml.svg)](https://github.com/oprypin/pytest-golden/actions?query=event%3Apush+branch%3Amaster)
 
 [pytest]: https://pytest.org/
 
