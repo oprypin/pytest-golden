@@ -39,4 +39,4 @@ def test_full(testdir, golden, upd):
     assert result.parseoutcomes() == outcomes[upd]
 
     if golden.get("match_output"):
-        result.stdout.fnmatch_lines(["*" + l + "*" for l in golden["match_output"]])
+        result.stdout.fnmatch_lines(["*" + line + "*" for line in golden["match_output"]])

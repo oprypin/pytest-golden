@@ -4,30 +4,19 @@ import contextlib
 import dataclasses
 import inspect
 import logging
-import os
 import pathlib
 import warnings
-from typing import (
-    Any,
-    Callable,
-    Collection,
-    Dict,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Collection, Sequence, TypeVar
 
 import atomicwrites
 import pytest
 
 from . import yaml
 
-T = TypeVar("T")
+if TYPE_CHECKING:
+    import os
+
+    T = TypeVar("T")
 
 
 def pytest_addoption(parser):
@@ -93,7 +82,7 @@ class GoldenTestFixtureFactory:
     update_goldens: bool
     assertions_enabled: bool
 
-    _fixtures: List[GoldenTestFixture] = dataclasses.field(init=False)
+    _fixtures: list[GoldenTestFixture] = dataclasses.field(init=False)
 
     def __post_init__(self):
         self._fixtures = []
@@ -119,9 +108,9 @@ class GoldenTestFixtureFactory:
 
 @dataclasses.dataclass
 class GoldenTestFixture(GoldenTestFixtureFactory):
-    _used_fields: Set[str] = dataclasses.field(init=False)
-    _records: List[Union[_ComparisonRecord, _AssertionRecord]] = dataclasses.field(init=False)
-    _inputs: Dict[str, Any] = dataclasses.field(init=False)
+    _used_fields: set[str] = dataclasses.field(init=False)
+    _records: list[_ComparisonRecord | _AssertionRecord] = dataclasses.field(init=False)
+    _inputs: dict[str, Any] = dataclasses.field(init=False)
 
     def __post_init__(self):
         self._used_fields = set()
@@ -143,7 +132,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         self._used_fields.add(key)
         return self._inputs[key]
 
-    def get(self, key: str, default: Optional[T] = None) -> Union[Any, T]:
+    def get(self, key: str, default: T | None = None) -> Any | T:
         self._used_fields.add(key)
         return self._inputs.get(key, default)
 
@@ -154,10 +143,12 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         if not self.update_goldens:
             return
 
-        actual: Dict[str, Union[_AbsentValue, Any]] = {}
-        approved_lines: Set[int] = set()
-        to_warn: List[Tuple[str, _ComparisonRecord]] = []
-        warn = lambda *args: to_warn.append(args)
+        actual: dict[str, _AbsentValue | Any] = {}
+        approved_lines: set[int] = set()
+        to_warn: list[tuple[str, _ComparisonRecord]] = []
+
+        def warn(*args):
+            return to_warn.append(args)
 
         for record in reversed(self._records):
             if isinstance(record, _AssertionRecord):
@@ -212,18 +203,18 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
             yaml._rt.dump(outputs, f)
 
     @contextlib.contextmanager
-    def may_raise(self, cls: Type[Exception], *, key: str = "exception"):
+    def may_raise(self, cls: type[Exception], *, key: str = "exception"):
         try:
             yield
         except cls as e:
             assert self.out.get(key) == {type(e).__name__: str(e)}
         else:
-            assert self.out.get(key) == None
+            assert self.out.get(key) is None
 
     @contextlib.contextmanager
     def capture_logs(
         self,
-        loggers: Union[str, Tuple[str]],
+        loggers: str | tuple[str],
         level: int = logging.INFO,
         attributes: Sequence[str] = ("levelname", "getMessage"),
         *,

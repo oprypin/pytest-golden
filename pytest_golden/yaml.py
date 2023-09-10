@@ -1,4 +1,6 @@
-from typing import Any, Callable, Type
+from __future__ import annotations
+
+from typing import Any, Callable
 
 import ruamel.yaml
 
@@ -9,20 +11,20 @@ _safe = ruamel.yaml.YAML(typ="safe", pure=True)
 _rt = ruamel.yaml.YAML(typ="rt", pure=True)
 
 
-def register_class(cls: Type) -> None:
+def register_class(cls: type) -> None:
     _safe.register_class(cls)
     _rt.register_class(cls)
 
 
 def add_representer(
-    data_type: Type, representer: Callable[[ruamel.yaml.BaseRepresenter, UserType], YamlType]
+    data_type: type, representer: Callable[[ruamel.yaml.BaseRepresenter, UserType], YamlType]
 ) -> None:
     _safe.representer.add_representer(data_type, representer)
     _rt.representer.add_representer(data_type, representer)
 
 
 def add_multi_representer(
-    base_data_type: Type,
+    base_data_type: type,
     multi_representer: Callable[[ruamel.yaml.BaseRepresenter, UserType], YamlType],
 ) -> None:
     _safe.representer.add_multi_representer(base_data_type, multi_representer)
