@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-import ruamel.yaml
+import ruamel.yaml  # type: ignore
 
 UserType = Any
 YamlType = Any
