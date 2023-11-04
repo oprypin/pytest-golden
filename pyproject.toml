@@ -120,6 +120,8 @@ allow-dict-calls-with-keyword-arguments = true
 
 [tool.mypy]
 warn_unreachable = true
+allow_redefinition = true
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "--tb=native"

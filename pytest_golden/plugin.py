@@ -139,7 +139,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
     def _add_record(self, r):
         self._records.append(r)
 
-    def teardown(self, item):
+    def teardown(self, item) -> None:
         if not self.update_goldens:
             return
 
@@ -327,7 +327,7 @@ class _AbsentValue:
         return "<absent>"
 
 
-def pytest_generate_tests(metafunc):
+def pytest_generate_tests(metafunc) -> None:
     item = metafunc.definition
     marker = item.get_closest_marker(MARKER_NAME)
     if not marker:
