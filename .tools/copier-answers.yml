@@ -1,0 +1,13 @@
+_commit: 7d6f4ceea
+_src_path: gh:oprypin/py-project-template
+copyright_date: '2020'
+mkdocs: false
+mkdocs_install_self: false
+project_description: Plugin for pytest that offloads expected outputs to data files
+project_name: pytest-golden
+pytest: true
+python_distribution_name: pytest-golden
+python_source_path: pytest_golden
+repository_name: oprypin/pytest-golden
+script_test: true
+

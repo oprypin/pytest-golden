@@ -36,9 +36,9 @@ dependencies = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/oprypin/pytest-golden/#readme"
-Issues = "https://github.com/oprypin/pytest-golden/issues"
+Documentation = "https://github.com/oprypin/pytest-golden#readme"
 Source = "https://github.com/oprypin/pytest-golden"
+Issues = "https://github.com/oprypin/pytest-golden/issues"
 
 [project.entry-points."pytest11"]
 pytest-golden = "pytest_golden.plugin"
@@ -59,7 +59,6 @@ all = [
 [tool.hatch.envs.test]
 dependencies = [
     "pytest",
-    "pytest-golden",
 ]
 [tool.hatch.envs.test.scripts]
 test = [
@@ -89,15 +88,6 @@ fix = [
 ]
 format = [
     "ruff format -q pytest_golden tests",
-]
-
-[tool.hatch.envs.docs]
-detached = true
-dependencies = [
-    "mkdocs >=1.1.2",
-    "mkdocs-material >=7.1.4",
-    "pymdown-extensions >=8.2",
-    "markdown-callouts >=0.1",
 ]
 
 [tool.ruff]
