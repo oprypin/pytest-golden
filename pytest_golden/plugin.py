@@ -220,7 +220,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         *,
         key: str = "logs",
     ):
-        import testfixtures  # type: ignore
+        import testfixtures
 
         with testfixtures.LogCapture(loggers, attributes=attributes, level=level) as capture:
             yield
