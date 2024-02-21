@@ -8,9 +8,9 @@ import pathlib
 import warnings
 from typing import TYPE_CHECKING, Any, Callable, Collection, Sequence, TypeVar
 
+import _pytest
 import atomicwrites
 import pytest
-import _pytest
 
 from . import yaml
 
