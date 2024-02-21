@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, Collection, Sequence, TypeVar
 
 import atomicwrites
 import pytest
+import _pytest
 
 from . import yaml
 
@@ -113,6 +114,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
     _inputs: dict[str, Any] = dataclasses.field(init=False)
 
     def __post_init__(self):
+        super().__post_init__()
         self._used_fields = set()
 
         # Keep inputs as a separate copy, so if an input gets mutated, it isn't written back.
@@ -281,13 +283,15 @@ class GoldenComparison:
 
     def __bool__(self) -> bool:
         stack = inspect.stack()
-        approved = [
-            inspect.unwrap(self.fixt.func).__code__,
-            inspect.unwrap(GoldenTestFixture.may_raise).__code__,
-            inspect.unwrap(GoldenTestFixture.capture_logs).__code__,
+        # skip over functions call used to rewrite the assertion rewrite
+        deny = [
+            inspect.unwrap(_pytest.assertion.rewrite._call_reprcompare).__code__,
         ]
-        for info in stack:
-            if info.frame.f_code in approved:
+        # skip stack[0] because it is the stack frame for this function
+        for info in stack[1:]:
+            if info.frame.f_code in deny:
+                continue
+            else:
                 self.fixt._add_record(_ComparisonRecord(self, inspect.getframeinfo(info.frame)))
                 break
         return self.eq
