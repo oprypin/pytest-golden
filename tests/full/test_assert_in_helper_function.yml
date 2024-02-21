@@ -1,0 +1,13 @@
+test: |
+  def helper(x, y):
+    assert x == y
+  def test_assert_in_helper_function(golden):
+    golden = golden.open("gold.yml")
+    helper(5, golden.out["output"])
+files:
+  gold.yml: |
+    output: 5
+outcomes:
+  passed: 1
+outcomes_update:
+  passed: 1
