@@ -6,7 +6,8 @@ import inspect
 import logging
 import pathlib
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Collection, Sequence, TypeVar
+from collections.abc import Collection, Sequence
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import atomicwrites
 import pytest
@@ -16,7 +17,8 @@ from . import yaml
 if TYPE_CHECKING:
     import os
 
-    T = TypeVar("T")
+
+T = TypeVar("T")
 
 
 def pytest_addoption(parser):
@@ -360,7 +362,7 @@ def pytest_generate_tests(metafunc) -> None:
     rel_paths = [path.relative_to(directory) for path in paths]
     skip_parts = None
     if all(
-        _removeprefix("test_", path.parts[0]) == _removeprefix("test_", item.originalname)
+        "test_".removeprefix(path.parts[0]) == "test_".removeprefix(item.originalname)
         for path in rel_paths
     ):
         skip_parts = 1
@@ -372,12 +374,6 @@ def pytest_generate_tests(metafunc) -> None:
         ids=ids,
         indirect=True,
     )
-
-
-def _removeprefix(prefix: str, s: str):
-    if s.startswith(prefix):
-        s = s[len(prefix) :]
-    return s
 
 
 def pytest_assertion_pass(item, lineno, orig, expl):
