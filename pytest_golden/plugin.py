@@ -17,8 +17,10 @@ from . import yaml
 if TYPE_CHECKING:
     import os
 
+    from typing_extensions import Self
 
-T = TypeVar("T")
+
+_T = TypeVar("_T")
 
 
 def pytest_addoption(parser):
@@ -134,7 +136,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
         self._used_fields.add(key)
         return self._inputs[key]
 
-    def get(self, key: str, default: T | None = None) -> Any | T:
+    def get(self, key: str, default: _T | None = None) -> Any | _T:
         self._used_fields.add(key)
         return self._inputs.get(key, default)
 
@@ -298,7 +300,7 @@ class GoldenComparison:
         op = "==" if self.eq else "!="
         return f"{self.other!r} {op} {self.fixt.name}.out[{self.key!r}]"
 
-    def approve(self: T) -> T:
+    def approve(self) -> Self:
         if isinstance(self, GoldenComparison):
             self.approved = True
         return self
