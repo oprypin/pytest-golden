@@ -33,7 +33,6 @@ requires-python = ">=3.9"
 dependencies = [
     "pytest >=6.1.2",
     "ruamel.yaml >=0.16.12, <1.0",
-    "atomicwrites >=1.4.0",
     "testfixtures >=6.15.0",
 ]
 
@@ -74,7 +73,6 @@ test = [
 [tool.hatch.envs.types]
 dependencies = [
     "mypy",
-    "types-atomicwrites",
 ]
 [tool.hatch.envs.types.scripts]
 check = "mypy {args} pytest_golden"
