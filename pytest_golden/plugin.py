@@ -4,23 +4,66 @@ import contextlib
 import dataclasses
 import inspect
 import logging
+import os
 import pathlib
+import sys
+import tempfile
 import warnings
-from collections.abc import Collection, Sequence
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from collections.abc import Collection, Iterator, Sequence
+from typing import IO, TYPE_CHECKING, Any, Callable, TypeVar
 
-import atomicwrites
 import pytest
 
 from . import yaml
 
 if TYPE_CHECKING:
-    import os
-
     from typing_extensions import Self
 
 
 _T = TypeVar("_T")
+
+
+if sys.platform == "win32":
+
+    def _replace_atomic(src: os.PathLike[str], dst: os.PathLike[str]):
+        from ctypes import WinError, windll
+
+        movefile_replace_existing = 0x1
+        movefile_write_through = 0x8
+
+        rv = windll.kernel32.MoveFileExW(
+            str(src),
+            str(dst),
+            movefile_write_through | movefile_replace_existing,
+        )
+        if not rv:
+            raise WinError()
+
+else:
+
+    def _replace_atomic(src: os.PathLike[str], dst: os.PathLike[str]):
+        os.rename(src, dst)
+
+
+@contextlib.contextmanager
+def atomic_write(dest: os.PathLike[str]) -> Iterator[IO[str]]:
+    """Atomically write to the destination file."""
+    dir = os.path.normpath(os.path.dirname(dest))
+    fd, src = tempfile.mkstemp(prefix=os.path.basename(dest), dir=dir)
+    os.close(fd)
+    try:
+        success = False
+        with open(file=src, encoding="utf-8", mode="w") as file:
+            yield file
+            file.flush()
+            os.fsync(file.fileno())
+        path_src = pathlib.Path(src)
+        _replace_atomic(path_src, dest)
+        success = True
+    finally:
+        if not success:
+            with contextlib.suppress(Exception):
+                os.unlink(src)
 
 
 def pytest_addoption(parser):
@@ -203,7 +246,7 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
                 f_code.co_filename,
                 f_code.co_firstlineno,
             )
-        with atomicwrites.atomic_write(self.path, mode="w", encoding="utf-8", overwrite=True) as f:
+        with atomic_write(self.path) as f:
             yaml._rt.dump(outputs, f)
 
     @contextlib.contextmanager
