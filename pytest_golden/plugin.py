@@ -407,7 +407,7 @@ def pytest_generate_tests(metafunc) -> None:
     rel_paths = [path.relative_to(directory) for path in paths]
     skip_parts = None
     if all(
-        "test_".removeprefix(path.parts[0]) == "test_".removeprefix(item.originalname)
+        path.parts[0].removeprefix("test_") == item.originalname.removeprefix("test_")
         for path in rel_paths
     ):
         skip_parts = 1
