@@ -10,12 +10,16 @@ from pytest_golden import plugin
 def test_full(testdir, golden, upd):
     assert golden.path.stem in golden["test"]
 
-    testdir.makefile(".ini", pytest="[pytest]\nenable_assertion_pass_hook=true\n")
+    ini = golden.get("ini") or "[pytest]\nenable_assertion_pass_hook=true\n"
+    testdir.makefile(".ini", pytest=ini)
     testdir.makepyfile(golden["test"])
 
     files = golden.get("files") or {}
     for name, content in files.items():
-        (testdir.tmpdir / name).write_text(content, encoding="utf-8")
+        path = testdir.tmpdir.join(name)
+        if "/" in name or "\\" in name:
+            path.dirpath().ensure(dir=1)
+        path.write(content)
 
     with pytest.warns(plugin.GoldenTestUsageWarning) as record:
         warnings.warn("OK", plugin.GoldenTestUsageWarning)

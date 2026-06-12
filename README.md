@@ -41,6 +41,18 @@ Whenever the function under test gets changed, its result may change as well, an
 
 **See [detailed usage](#usage).**
 
+### `golden_root` (pytest ini)
+
+Set in `pytest.ini` or `pyproject.toml` under `[tool.pytest.ini_options]`:
+
+```toml
+golden_root = "goldens"
+```
+
+When set, relative paths passed to `golden.open(...)` resolve from this directory (relative to the pytest rootdir) instead of the test module's directory. When unset, behavior is unchanged (golden files live next to the test module, as in the examples above).
+
+Development gates for this repository: `hatch run style:check` and `hatch run test:pytest`.
+
 ## The case for golden testing
 
 Consider this normal situation when testing a function (e.g. a function to list all words in a sentence).

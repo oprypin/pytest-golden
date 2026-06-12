@@ -1,0 +1,15 @@
+test: |
+  def test_golden_root(golden):
+    g = golden.open("case.yml")
+    assert g["value"] == 99
+ini: |
+  [pytest]
+  enable_assertion_pass_hook=true
+  golden_root = goldens
+files:
+  goldens/case.yml: |
+    value: 99
+outcomes:
+  passed: 1
+outcomes_update:
+  passed: 1
