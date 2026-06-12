@@ -16,7 +16,10 @@ def test_full(testdir, golden, upd):
 
     files = golden.get("files") or {}
     for name, content in files.items():
-        (testdir.tmpdir / name).write_text(content, encoding="utf-8")
+        path = testdir.tmpdir.join(name)
+        if "/" in name or "\\" in name:
+            path.dirpath().ensure(dir=1)
+        path.write(content)
 
     with pytest.warns(plugin.GoldenTestUsageWarning) as record:
         warnings.warn("OK", plugin.GoldenTestUsageWarning)

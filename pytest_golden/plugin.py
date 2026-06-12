@@ -153,6 +153,7 @@ class GoldenTestFixtureFactory:
             func=self.func,
             update_goldens=self.update_goldens,
             assertions_enabled=self.assertions_enabled,
+            golden_base=self.golden_base,
         )
         self._fixtures.append(fixt)
         return fixt
@@ -413,15 +414,15 @@ def pytest_generate_tests(metafunc) -> None:
         metafunc.config.getini("golden_root"),
         metafunc.config.rootpath,
     )
-    paths: Collection[pathlib.Path] = dict.fromkeys(
+    golden_paths: Collection[pathlib.Path] = dict.fromkeys(
         path for pattern in patterns for path in directory.glob(pattern)
     )
-    if not paths:
+    if not golden_paths:
         warn(f"The patterns {patterns!r} didn't match anything")
         return
 
     # `::test_foo[foo/*.yaml]` -> `::test_foo[*.yaml]`
-    rel_paths = [path.relative_to(directory) for path in paths]
+    rel_paths = [path.relative_to(directory) for path in golden_paths]
     skip_parts = None
     if all(
         path.parts[0].removeprefix("test_") == item.originalname.removeprefix("test_")
@@ -432,7 +433,7 @@ def pytest_generate_tests(metafunc) -> None:
 
     metafunc.parametrize(
         FIXTURE_NAME,
-        ((path, metafunc.function) for path in paths),
+        ((path, metafunc.function) for path in golden_paths),
         ids=ids,
         indirect=True,
     )

@@ -11,3 +11,5 @@ files:
     value: 99
 outcomes:
   passed: 1
+outcomes_update:
+  passed: 1

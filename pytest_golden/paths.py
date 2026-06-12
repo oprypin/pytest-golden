@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-import os
 import pathlib
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import os
 
 
 def golden_base_directory(
@@ -19,4 +22,4 @@ def golden_base_directory(
 
 
 def resolve_golden_file(base: pathlib.Path, relative: os.PathLike[str]) -> pathlib.Path:
-    return base / relative
+    return (base / relative).resolve()
