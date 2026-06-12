@@ -10,7 +10,8 @@ from pytest_golden import plugin
 def test_full(testdir, golden, upd):
     assert golden.path.stem in golden["test"]
 
-    testdir.makefile(".ini", pytest="[pytest]\nenable_assertion_pass_hook=true\n")
+    ini = golden.get("ini") or "[pytest]\nenable_assertion_pass_hook=true\n"
+    testdir.makefile(".ini", pytest=ini)
     testdir.makepyfile(golden["test"])
 
     files = golden.get("files") or {}

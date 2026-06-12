@@ -73,6 +73,11 @@ def pytest_addoption(parser):
         default=False,
         help="reset golden master benchmarks",
     )
+    parser.addini(
+        "golden_root",
+        default="",
+        help="Base directory for resolving golden YAML paths (relative to pytest rootdir)",
+    )
 
 
 @pytest.fixture
