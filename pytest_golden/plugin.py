@@ -14,7 +14,7 @@ from typing import IO, TYPE_CHECKING, Any, Callable, TypeVar
 
 import pytest
 
-from . import yaml
+from . import paths, yaml
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -88,11 +88,18 @@ def golden(request):
     except AttributeError:
         func = request.function
 
+    module_file = pathlib.Path(request.module.__file__)
+    golden_base = paths.golden_base_directory(
+        module_file,
+        request.config.getini("golden_root"),
+        request.config.rootpath,
+    )
     fixt = GoldenTestFixtureFactory(
-        pathlib.Path(request.module.__file__),
+        module_file,
         func,
         request.config.getoption("--update-goldens"),
         request.config.getini("enable_assertion_pass_hook"),
+        golden_base=golden_base,
     )
     if path is not None:
         fixt = fixt.open(path)
@@ -133,6 +140,7 @@ class GoldenTestFixtureFactory:
     func: Callable
     update_goldens: bool
     assertions_enabled: bool
+    golden_base: pathlib.Path
 
     _fixtures: list[GoldenTestFixture] = dataclasses.field(init=False)
 
@@ -141,7 +149,7 @@ class GoldenTestFixtureFactory:
 
     def open(self, path: os.PathLike) -> GoldenTestFixture:
         fixt = GoldenTestFixture(
-            path=self.path.parent / path,
+            path=paths.resolve_golden_file(self.golden_base, path),
             func=self.func,
             update_goldens=self.update_goldens,
             assertions_enabled=self.assertions_enabled,
@@ -400,7 +408,11 @@ def pytest_generate_tests(metafunc) -> None:
         warn(f"Useless '{MARKER_NAME}' marker on a test without a '{FIXTURE_NAME}' fixture")
         return
 
-    directory = pathlib.Path(metafunc.module.__file__).parent
+    directory = paths.golden_base_directory(
+        pathlib.Path(metafunc.module.__file__),
+        metafunc.config.getini("golden_root"),
+        metafunc.config.rootpath,
+    )
     paths: Collection[pathlib.Path] = dict.fromkeys(
         path for pattern in patterns for path in directory.glob(pattern)
     )
