@@ -9,8 +9,8 @@ import pathlib
 import sys
 import tempfile
 import warnings
-from collections.abc import Collection, Iterator, Sequence
-from typing import IO, TYPE_CHECKING, Any, Callable, TypeVar
+from collections.abc import Callable, Collection, Iterator, Sequence
+from typing import IO, TYPE_CHECKING, Any, TypeVar
 
 import pytest
 
@@ -122,7 +122,7 @@ class GoldenTestUsageWarning(Warning):
 
 @dataclasses.dataclass
 class GoldenTestFixtureFactory:
-    name = FIXTURE_NAME
+    name = FIXTURE_NAME  # noqa: RUF045
 
     path: pathlib.Path
     func: Callable
@@ -289,7 +289,7 @@ class GoldenOutputProxy:
 
 
 @dataclasses.dataclass
-class GoldenOutput:
+class GoldenOutput:  # noqa: PLW1641
     fixt: GoldenTestFixture
     key: str
     optional: bool = False
