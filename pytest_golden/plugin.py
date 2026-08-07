@@ -73,6 +73,12 @@ def pytest_addoption(parser):
         default=False,
         help="reset golden master benchmarks",
     )
+    parser.addoption(
+        "--create-goldens",
+        action="store_true",
+        default=False,
+        help="create golden master benchmarks",
+    )
 
 
 @pytest.fixture
@@ -86,7 +92,9 @@ def golden(request):
     fixt = GoldenTestFixtureFactory(
         pathlib.Path(request.module.__file__),
         func,
-        request.config.getoption("--update-goldens"),
+        request.config.getoption("--create-goldens")
+        or request.config.getoption("--update-goldens"),
+        request.config.getoption("--create-goldens"),
         request.config.getini("enable_assertion_pass_hook"),
     )
     if path is not None:
@@ -127,6 +135,7 @@ class GoldenTestFixtureFactory:
     path: pathlib.Path
     func: Callable
     update_goldens: bool
+    create_goldens: bool
     assertions_enabled: bool
 
     _fixtures: list[GoldenTestFixture] = dataclasses.field(init=False)
@@ -139,6 +148,7 @@ class GoldenTestFixtureFactory:
             path=self.path.parent / path,
             func=self.func,
             update_goldens=self.update_goldens,
+            create_goldens=self.create_goldens,
             assertions_enabled=self.assertions_enabled,
         )
         self._fixtures.append(fixt)
@@ -161,9 +171,13 @@ class GoldenTestFixture(GoldenTestFixtureFactory):
 
     def __post_init__(self):
         self._used_fields = set()
+        mode = "r"
 
         # Keep inputs as a separate copy, so if an input gets mutated, it isn't written back.
-        with open(self.path, encoding="utf-8") as f:
+        if self.create_goldens and not self.path.exists():
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            mode = "w+"
+        with open(self.path, mode, encoding="utf-8") as f:
             self._inputs = yaml._safe.load(f) or {}
         if not isinstance(self._inputs, dict):
             raise UsageError(f"The YAML file '{self.path}' must contain a dict at the top level.")
