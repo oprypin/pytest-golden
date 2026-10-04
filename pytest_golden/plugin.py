@@ -415,7 +415,7 @@ def pytest_generate_tests(metafunc) -> None:
 
     metafunc.parametrize(
         FIXTURE_NAME,
-        ((path, metafunc.function) for path in paths),
+        [(path, metafunc.function) for path in paths],
         ids=ids,
         indirect=True,
     )
